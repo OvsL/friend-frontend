@@ -178,6 +178,13 @@ const openEditDialog = () => {
   }
   
   console.log('编辑表单数据:', editForm.value)
+  console.log('状态字段详情:', {
+    teamStatus: team.value.status,
+    teamStatusType: typeof team.value.status,
+    editFormStatus: editForm.value.status,
+    editFormStatusType: typeof editForm.value.status,
+    mappedText: teamStatusMap[editForm.value.status]?.text
+  })
   showEditDialog.value = true
 }
 
@@ -209,14 +216,20 @@ const editTeam = async () => {
       teamName: editForm.value.teamName.trim(),
       description: editForm.value.description.trim(),
       maxNum: editForm.value.maxNum,
-      status: editForm.value.status,
-      password: editForm.value.status === 2 ? editForm.value.password : undefined
+      status: editForm.value.status
+    }
+    
+    // 只有当状态为加密时才添加密码字段
+    if (editForm.value.status === 2 && editForm.value.password.trim()) {
+      updateData.password = editForm.value.password.trim()
     }
     
     // 如果有过期时间，添加到更新数据中
     if (editForm.value.expireTime) {
       updateData.expireTime = new Date(editForm.value.expireTime)
     }
+    
+    console.log('发送的更新数据:', updateData)
     
     const response = await teamApi.updateTeam(updateData)
     if (response.data && response.data.code === 0) {
@@ -249,6 +262,65 @@ const canJoinTeam = () => {
   if (team.value.status === 1) return false // 私有团队
   if (team.value.hasJoinNum >= team.value.maxNum) return false // 人数已满
   return true
+}
+
+// 状态选择器确认事件
+const onStatusPickerConfirm = (value) => {
+  console.log('状态选择器确认:', value)
+  console.log('value类型:', typeof value)
+  console.log('value内容:', JSON.stringify(value))
+  
+  // 根据 Vant Picker 的实际参数结构提取值
+  let selectedValue = null
+  
+  if (value && typeof value === 'object') {
+    // 优先使用 selectedValues 数组的第一个值
+    if (value.selectedValues && Array.isArray(value.selectedValues) && value.selectedValues.length > 0) {
+      selectedValue = value.selectedValues[0]
+    }
+    // 如果没有 selectedValues，尝试使用 selectedOptions 的第一个值
+    else if (value.selectedOptions && Array.isArray(value.selectedOptions) && value.selectedOptions.length > 0) {
+      selectedValue = value.selectedOptions[0].value
+    }
+  }
+  
+  console.log('解析后的值:', selectedValue)
+  
+  // 确保值是有效的数字
+  if (typeof selectedValue === 'number' && [0, 1, 2].includes(selectedValue)) {
+    editForm.value.status = selectedValue
+    
+    // 如果状态不是加密，清空密码字段
+    if (selectedValue !== 2) {
+      editForm.value.password = ''
+    }
+    
+    showStatusPicker.value = false
+    
+    console.log('状态选择器更新后:', {
+      editFormStatus: editForm.value.status,
+      password: editForm.value.password
+    })
+  } else {
+    console.error('无效的状态值:', selectedValue)
+    showToast('选择状态失败，请重试')
+  }
+}
+
+// 调试编辑表单
+const debugEditForm = () => {
+  console.log('=== 编辑表单调试 ===')
+  console.log('当前团队数据:', team.value)
+  console.log('编辑表单数据:', editForm.value)
+  console.log('团队状态映射:', teamStatusMap)
+  console.log('状态选择器列:', statusColumns)
+  console.log('状态字段详情:', {
+    teamStatus: team.value?.status,
+    teamStatusType: typeof team.value?.status,
+    editFormStatus: editForm.value.status,
+    editFormStatusType: typeof editForm.value.status,
+    mappedText: teamStatusMap[editForm.value.status]?.text
+  })
 }
 
 // 页面初始化
@@ -328,6 +400,16 @@ onMounted(() => {
           block
         >
           编辑团队
+        </van-button>
+        
+        <van-button 
+          v-if="isTeamCreator()" 
+          type="default" 
+          size="small"
+          @click="debugEditForm"
+          style="margin-top: 8px;"
+        >
+          调试编辑表单
         </van-button>
         
         <van-button 
@@ -431,12 +513,18 @@ onMounted(() => {
         />
         
         <van-field
-          :model-value="teamStatusMap[editForm.status]?.text"
+          :model-value="teamStatusMap[editForm.status]?.text || `状态:${editForm.status}`"
           label="团队状态"
           readonly
           is-link
           @click="showStatusPicker = true"
         />
+        <!-- 调试信息 -->
+        <div style="font-size: 12px; color: #999; padding: 0 16px; margin-bottom: 8px;">
+          调试: editForm.status = {{ editForm.status }}, 显示值 = {{ teamStatusMap[editForm.status]?.text || `状态:${editForm.status}` }}
+          <br>
+          状态类型: {{ typeof editForm.status }}, 状态映射: {{ JSON.stringify(teamStatusMap[editForm.status]) }}
+        </div>
         
         <van-field
           v-if="editForm.status === 2"
@@ -457,7 +545,7 @@ onMounted(() => {
     >
       <van-picker
         :columns="statusColumns"
-        @confirm="(value) => { editForm.status = value.value; showStatusPicker = false }"
+        @confirm="onStatusPickerConfirm"
         @cancel="showStatusPicker = false"
       />
     </van-popup>

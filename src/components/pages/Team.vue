@@ -98,6 +98,12 @@ const fetchTeams = async (filters = {}) => {
       console.log('获取到的团队列表:', teams.value)
       if (teams.value.length > 0) {
         console.log('第一个团队数据结构:', teams.value[0])
+        console.log('第一个团队状态字段:', {
+          status: teams.value[0].status,
+          statusType: typeof teams.value[0].status,
+          maxNum: teams.value[0].maxNum,
+          maxNumType: typeof teams.value[0].maxNum
+        })
       }
     } else {
       showToast(response.data?.message || '获取团队列表失败')
@@ -350,10 +356,10 @@ const isTeamCreator = (team) => {
 // 检查是否可以加入团队
 const canJoinTeam = (team) => {
   if (!currentUser) return false
-  if (team.status === 1) return false // 私有团队
+  if (Number(team.status) === 1) return false // 私有团队
   
-  const hasJoinNum = team.hasJoinNum || 0
-  const maxNum = team.maxNum || 1
+  const hasJoinNum = Number(team.hasJoinNum || 0)
+  const maxNum = Number(team.maxNum || 1)
   
   if (hasJoinNum >= maxNum) return false // 人数已满
   return true
@@ -367,8 +373,8 @@ const isTeamExpired = (team) => {
 
 // 获取团队进度百分比
 const getTeamProgress = (team) => {
-  const hasJoinNum = team.hasJoinNum || 0
-  const maxNum = team.maxNum || 1
+  const hasJoinNum = Number(team.hasJoinNum || 0)
+  const maxNum = Number(team.maxNum || 1)
   
   if (maxNum <= 0) return 0
   
@@ -453,6 +459,16 @@ const openFilterDialog = () => {
     tempMaxNum: tempFilterMaxNum.value
   })
   
+  // 添加更详细的调试信息
+  console.log('筛选对话框状态字段详情:', {
+    tempFilterStatus: tempFilterStatus.value,
+    tempFilterStatusType: typeof tempFilterStatus.value,
+    tempFilterMaxNum: tempFilterMaxNum.value,
+    tempFilterMaxNumType: typeof tempFilterMaxNum.value,
+    statusMappedText: teamStatusMap[tempFilterStatus.value]?.text,
+    maxNumDisplay: tempFilterMaxNum.value === -1 ? '全部人数' : `${tempFilterMaxNum.value}人`
+  })
+  
   showFilterDialog.value = true
 }
 
@@ -470,31 +486,35 @@ const onStatusPickerConfirm = (value) => {
   console.log('value类型:', typeof value)
   console.log('value内容:', JSON.stringify(value))
   
-  // 尝试不同的方式获取值
-  let selectedValue = value
-  if (value && typeof value === 'object' && 'value' in value) {
-    selectedValue = value.value
-  } else if (value && typeof value === 'object' && 'text' in value) {
-    selectedValue = value.text
+  // 根据 Vant Picker 的实际参数结构提取值
+  let selectedValue = null
+  
+  if (value && typeof value === 'object') {
+    // 优先使用 selectedValues 数组的第一个值
+    if (value.selectedValues && Array.isArray(value.selectedValues) && value.selectedValues.length > 0) {
+      selectedValue = value.selectedValues[0]
+    }
+    // 如果没有 selectedValues，尝试使用 selectedOptions 的第一个值
+    else if (value.selectedOptions && Array.isArray(value.selectedOptions) && value.selectedOptions.length > 0) {
+      selectedValue = value.selectedOptions[0].value
+    }
   }
   
   console.log('解析后的值:', selectedValue)
   
-  // 如果是文本，转换为对应的数值
-  if (typeof selectedValue === 'string') {
-    if (selectedValue === '公开') selectedValue = 0
-    else if (selectedValue === '私有') selectedValue = 1
-    else if (selectedValue === '加密') selectedValue = 2
-    else if (selectedValue === '全部状态') selectedValue = -1
+  // 确保值是有效的数字
+  if (typeof selectedValue === 'number' && [-1, 0, 1, 2].includes(selectedValue)) {
+    tempFilterStatus.value = selectedValue
+    showStatusFilterPicker.value = false
+    
+    console.log('状态选择器更新后:', {
+      tempFilterStatus: tempFilterStatus.value,
+      filterStatus: filterStatus.value
+    })
+  } else {
+    console.error('无效的状态值:', selectedValue)
+    showToast('选择状态失败，请重试')
   }
-  
-  tempFilterStatus.value = selectedValue
-  showStatusFilterPicker.value = false
-  
-  console.log('状态选择器更新后:', {
-    tempFilterStatus: tempFilterStatus.value,
-    filterStatus: filterStatus.value
-  })
 }
 
 // 人数选择器确认事件
@@ -503,31 +523,35 @@ const onMaxNumPickerConfirm = (value) => {
   console.log('value类型:', typeof value)
   console.log('value内容:', JSON.stringify(value))
   
-  // 尝试不同的方式获取值
-  let selectedValue = value
-  if (value && typeof value === 'object' && 'value' in value) {
-    selectedValue = value.value
-  } else if (value && typeof value === 'object' && 'text' in value) {
-    selectedValue = value.text
+  // 根据 Vant Picker 的实际参数结构提取值
+  let selectedValue = null
+  
+  if (value && typeof value === 'object') {
+    // 优先使用 selectedValues 数组的第一个值
+    if (value.selectedValues && Array.isArray(value.selectedValues) && value.selectedValues.length > 0) {
+      selectedValue = value.selectedValues[0]
+    }
+    // 如果没有 selectedValues，尝试使用 selectedOptions 的第一个值
+    else if (value.selectedOptions && Array.isArray(value.selectedOptions) && value.selectedOptions.length > 0) {
+      selectedValue = value.selectedOptions[0].value
+    }
   }
   
   console.log('解析后的值:', selectedValue)
   
-  // 如果是文本，转换为对应的数值
-  if (typeof selectedValue === 'string') {
-    if (selectedValue === '全部人数') selectedValue = -1
-    else if (selectedValue.includes('人')) {
-      selectedValue = parseInt(selectedValue.replace('人', ''))
-    }
+  // 确保值是有效的数字
+  if (typeof selectedValue === 'number' && [-1, 2, 3, 5, 10, 20].includes(selectedValue)) {
+    tempFilterMaxNum.value = selectedValue
+    showMaxNumFilterPicker.value = false
+    
+    console.log('人数选择器更新后:', {
+      tempFilterMaxNum: tempFilterMaxNum.value,
+      filterMaxNum: filterMaxNum.value
+    })
+  } else {
+    console.error('无效的人数值:', selectedValue)
+    showToast('选择人数失败，请重试')
   }
-  
-  tempFilterMaxNum.value = selectedValue
-  showMaxNumFilterPicker.value = false
-  
-  console.log('人数选择器更新后:', {
-    tempFilterMaxNum: tempFilterMaxNum.value,
-    filterMaxNum: filterMaxNum.value
-  })
 }
 
 // 测试筛选功能
@@ -566,6 +590,31 @@ const debugTempFilters = () => {
   console.log('筛选对话框状态:', showFilterDialog.value)
   console.log('状态选择器状态:', showStatusFilterPicker.value)
   console.log('人数选择器状态:', showMaxNumFilterPicker.value)
+  
+  // 调试筛选后的团队数据
+  if (teams.value.length > 0) {
+    console.log('筛选后的第一个团队数据:', teams.value[0])
+    console.log('团队状态字段详情:', {
+      status: teams.value[0].status,
+      statusType: typeof teams.value[0].status,
+      maxNum: teams.value[0].maxNum,
+      maxNumType: typeof teams.value[0].maxNum,
+      hasJoinNum: teams.value[0].hasJoinNum,
+      hasJoinNumType: typeof teams.value[0].hasJoinNum
+    })
+  }
+  
+  // 调试筛选对话框字段显示
+  console.log('筛选对话框字段显示详情:', {
+    tempFilterStatus: tempFilterStatus.value,
+    tempFilterStatusType: typeof tempFilterStatus.value,
+    statusMappedText: teamStatusMap[tempFilterStatus.value]?.text,
+    statusDisplayValue: tempFilterStatus.value === -1 ? '全部状态' : teamStatusMap[tempFilterStatus.value]?.text,
+    
+    tempFilterMaxNum: tempFilterMaxNum.value,
+    tempFilterMaxNumType: typeof tempFilterMaxNum.value,
+    maxNumDisplayValue: tempFilterMaxNum.value === -1 ? '全部人数' : `${tempFilterMaxNum.value}人`
+  })
 }
 
 // 监听搜索关键词变化
@@ -709,11 +758,11 @@ watch(searchKeyword, () => {
                       <div class="team-title">
                         <span class="team-name">{{ team.teamName || team.name }}</span>
                         <van-tag 
-                          :type="teamStatusMap[team.status]?.color"
+                          :type="teamStatusMap[Number(team.status)]?.color"
                           size="small"
                         >
-                          <van-icon :name="teamStatusMap[team.status]?.icon" />
-                          {{ teamStatusMap[team.status]?.text }}
+                          <van-icon :name="teamStatusMap[Number(team.status)]?.icon" />
+                          {{ teamStatusMap[Number(team.status)]?.text || `状态:${team.status}` }}
                         </van-tag>
                         <van-tag 
                           v-if="isTeamExpired(team)" 
@@ -735,7 +784,7 @@ watch(searchKeyword, () => {
                         </span>
                         <span class="meta-item">
                           <van-icon name="friends-o" />
-                          {{ team.hasJoinNum }}/{{ team.maxNum }}
+                          {{ Number(team.hasJoinNum || 0) }}/{{ Number(team.maxNum || 1) }}
                         </span>
                         <span class="meta-item">
                           <van-icon name="clock-o" />
@@ -806,11 +855,11 @@ watch(searchKeyword, () => {
                       <div class="team-title">
                         <span class="team-name">{{ team.teamName || team.name }}</span>
                         <van-tag 
-                          :type="teamStatusMap[team.status]?.color"
+                          :type="teamStatusMap[Number(team.status)]?.color"
                           size="small"
                         >
-                          <van-icon :name="teamStatusMap[team.status]?.icon" />
-                          {{ teamStatusMap[team.status]?.text }}
+                          <van-icon :name="teamStatusMap[Number(team.status)]?.icon" />
+                          {{ teamStatusMap[Number(team.status)]?.text || `状态:${team.status}` }}
                         </van-tag>
                         <van-tag 
                           v-if="isTeamCreator(team)" 
@@ -828,7 +877,7 @@ watch(searchKeyword, () => {
                       <div class="team-meta">
                         <span class="meta-item">
                           <van-icon name="friends-o" />
-                          {{ team.hasJoinNum }}/{{ team.maxNum }}
+                          {{ Number(team.hasJoinNum || 0) }}/{{ Number(team.maxNum || 1) }}
                         </span>
                         <span class="meta-item">
                           <van-icon name="clock-o" />
@@ -1003,6 +1052,8 @@ watch(searchKeyword, () => {
         <!-- 调试信息 -->
         <div style="font-size: 12px; color: #999; padding: 0 16px; margin-bottom: 8px;">
           调试: tempFilterStatus = {{ tempFilterStatus }}, 显示值 = {{ tempFilterStatus === -1 ? '全部状态' : teamStatusMap[tempFilterStatus]?.text }}
+          <br>
+          状态类型: {{ typeof tempFilterStatus }}, 状态映射: {{ JSON.stringify(teamStatusMap[tempFilterStatus]) }}
         </div>
         
         <van-popup
@@ -1031,6 +1082,8 @@ watch(searchKeyword, () => {
         <!-- 调试信息 -->
         <div style="font-size: 12px; color: #999; padding: 0 16px; margin-bottom: 8px;">
           调试: tempFilterMaxNum = {{ tempFilterMaxNum }}, 显示值 = {{ tempFilterMaxNum === -1 ? '全部人数' : `${tempFilterMaxNum}人` }}
+          <br>
+          人数类型: {{ typeof tempFilterMaxNum }}, 人数值: {{ tempFilterMaxNum }}
         </div>
         
         <van-popup
