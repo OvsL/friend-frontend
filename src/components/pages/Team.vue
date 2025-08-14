@@ -25,6 +25,12 @@ const showStatusFilterPicker = ref(false)
 const showMaxNumFilterPicker = ref(false)
 const selectedTeam = ref(null)
 
+// 分页相关状态
+const currentPage = ref(1)
+const pageSize = ref(10)
+const hasMore = ref(true)
+const listLoading = ref(false)
+
 // 临时筛选条件（用于对话框显示）
 const tempFilterStatus = ref(-1)
 const tempFilterMaxNum = ref(-1)
@@ -68,12 +74,24 @@ const filteredTeams = computed(() => {
   return teams.value
 })
 
-// 获取团队列表
-const fetchTeams = async (filters = {}) => {
-  loading.value = true
+// 获取团队列表（分页）
+const fetchTeams = async (filters = {}, isLoadMore = false) => {
+  if (isLoadMore) {
+    listLoading.value = true
+  } else {
+    loading.value = true
+    // 如果不是加载更多，重置分页状态
+    currentPage.value = 1
+    hasMore.value = true
+    teams.value = []
+  }
+  
   try {
     // 构建查询参数
-    const params = {}
+    const params = {
+      pageNum: currentPage.value,
+      pageSize: pageSize.value
+    }
     
     // 搜索关键词
     if (filters.searchText) {
@@ -90,12 +108,115 @@ const fetchTeams = async (filters = {}) => {
       params.maxNum = filters.maxNum
     }
     
-    console.log('发送筛选参数:', params)
+    console.log('发送分页筛选参数:', params)
     
+    // 临时：先使用非分页接口测试筛选逻辑
     const response = await teamApi.listTeams(params)
+    console.log('分页接口原始响应:', response)
+    console.log('分页接口数据结构:', response.data)
+    
     if (response.data && response.data.code === 0) {
-      teams.value = response.data.data || []
-      console.log('获取到的团队列表:', teams.value)
+      const responseData = response.data.data
+      console.log('响应数据:', responseData)
+      console.log('响应数据类型:', typeof responseData)
+      console.log('响应数据是否为数组:', Array.isArray(responseData))
+      
+      let newTeams = []
+      let isPaginated = false
+      let pageInfo = null
+      
+      // 检查是否为分页数据格式
+      if (responseData && responseData.records && Array.isArray(responseData.records)) {
+        // 分页格式：{records: [...], current: 1, size: 10, total: 100, pages: 10}
+        newTeams = responseData.records
+        isPaginated = true
+        pageInfo = {
+          current: responseData.current,
+          size: responseData.size,
+          total: responseData.total,
+          pages: responseData.pages
+        }
+        console.log('检测到分页数据格式:', pageInfo)
+      } else if (Array.isArray(responseData)) {
+        // 直接数组格式：[{...}, {...}]
+        newTeams = responseData
+        isPaginated = false
+        pageInfo = {
+          current: 1,
+          size: responseData.length,
+          total: responseData.length,
+          pages: 1
+        }
+        console.log('检测到直接数组格式，长度:', responseData.length)
+      } else {
+        console.error('未知的数据格式:', responseData)
+        teams.value = []
+        hasMore.value = false
+        return
+      }
+      
+      console.log('解析后的团队数组:', newTeams)
+      
+      // 处理团队数据，补充缺失的字段
+      const processedTeams = newTeams.map(team => ({
+        ...team,
+        // 补充缺失的字段
+        hasJoinNum: team.hasJoinNum || 0,
+        createUser: team.createUser || {
+          id: team.userId,
+          userName: '未知用户',
+          userAccount: 'unknown',
+          avatarUrl: '',
+          gender: 0,
+          phone: '',
+          email: '',
+          userStatus: 1,
+          userRole: 0,
+          tags: [],
+          createTime: team.createTime,
+          profile: ''
+        }
+      }))
+      
+      if (isLoadMore) {
+        // 加载更多：追加数据
+        teams.value.push(...processedTeams)
+      } else {
+        // 首次加载或筛选：替换数据
+        teams.value = processedTeams
+      }
+      
+      // 更新分页状态
+      if (isPaginated) {
+        // 分页格式：根据分页信息判断
+        hasMore.value = newTeams.length === pageSize.value && pageInfo.current < pageInfo.pages
+        if (hasMore.value) {
+          currentPage.value = pageInfo.current + 1
+        }
+      } else {
+        // 直接数组格式：没有分页，设置为没有更多数据
+        hasMore.value = false
+        currentPage.value = 1
+      }
+      
+      console.log('获取到的团队列表:', {
+        currentPage: currentPage.value,
+        pageSize: pageSize.value,
+        hasMore: hasMore.value,
+        totalTeams: teams.value.length,
+        newTeams: newTeams.length,
+        isPaginated: isPaginated,
+        pageInfo: pageInfo
+      })
+      
+      console.log('获取到的团队列表:', {
+        currentPage: currentPage.value,
+        pageSize: pageSize.value,
+        hasMore: hasMore.value,
+        totalTeams: teams.value.length,
+        newTeams: newTeams.length
+      })
+      
       if (teams.value.length > 0) {
         console.log('第一个团队数据结构:', teams.value[0])
         console.log('第一个团队状态字段:', {
@@ -112,8 +233,24 @@ const fetchTeams = async (filters = {}) => {
     console.error('获取团队列表失败:', error)
     showToast('获取团队列表失败')
   } finally {
-    loading.value = false
+    if (isLoadMore) {
+      listLoading.value = false
+    } else {
+      loading.value = false
+    }
   }
+}
+
+// 加载更多团队
+const loadMore = async () => {
+  if (!hasMore.value || listLoading.value) return
+  
+  console.log('加载更多团队，当前页:', currentPage.value)
+  await fetchTeams({
+    searchText: searchKeyword.value.trim() || undefined,
+    status: filterStatus.value !== -1 ? filterStatus.value : undefined,
+    maxNum: filterMaxNum.value !== -1 ? filterMaxNum.value : undefined
+  }, true)
 }
 
 // 获取我的团队
@@ -175,7 +312,7 @@ const createTeam = async () => {
       showSuccessToast('创建团队成功')
       showCreateDialog.value = false
       resetCreateForm()
-      await fetchTeams()
+      await fetchTeams({})
       await fetchMyTeams()
     } else {
       showToast(response.data?.message || '创建团队失败')
@@ -220,7 +357,7 @@ const joinTeam = async () => {
       showJoinDialog.value = false
       resetJoinForm()
       selectedTeam.value = null
-      await fetchTeams()
+      await fetchTeams({})
       await fetchMyTeams()
     } else {
       showToast(response.data?.message || '加入团队失败')
@@ -250,7 +387,7 @@ const exitTeam = async (teamId) => {
     
     if (response.data && response.data.code === 0) {
       showSuccessToast('退出团队成功')
-      await fetchTeams()
+      await fetchTeams({})
       await fetchMyTeams()
     } else {
       showToast(response.data?.message || '退出团队失败')
@@ -280,7 +417,7 @@ const dismissTeam = async (teamId) => {
     
     if (response.data && response.data.code === 0) {
       showSuccessToast('解散团队成功')
-      await fetchTeams()
+      await fetchTeams({})
       await fetchMyTeams()
     } else {
       showToast(response.data?.message || '解散团队失败')
@@ -322,7 +459,7 @@ const resetFilters = () => {
   tempFilterMaxNum.value = -1
   
   // 重新获取所有团队数据
-  fetchTeams()
+      fetchTeams({})
 }
 
 // 格式化时间
@@ -385,7 +522,7 @@ const getTeamProgress = (team) => {
 // 页面初始化
 onMounted(async () => {
   if (isLoggedIn.value) {
-    await fetchTeams()
+    await fetchTeams({})
     await fetchMyTeams()
   }
 })
@@ -615,6 +752,15 @@ const debugTempFilters = () => {
     tempFilterMaxNumType: typeof tempFilterMaxNum.value,
     maxNumDisplayValue: tempFilterMaxNum.value === -1 ? '全部人数' : `${tempFilterMaxNum.value}人`
   })
+  
+  // 调试分页状态
+  console.log('分页状态:', {
+    currentPage: currentPage.value,
+    pageSize: pageSize.value,
+    hasMore: hasMore.value,
+    totalTeams: teams.value.length,
+    listLoading: listLoading.value
+  })
 }
 
 // 监听搜索关键词变化
@@ -673,7 +819,7 @@ watch(searchKeyword, () => {
         v-if="searchKeyword" 
         type="primary" 
         closeable 
-        @close="() => { searchKeyword = ''; fetchTeams() }"
+        @close="() => { searchKeyword = ''; fetchTeams({}) }"
       >
         搜索: {{ searchKeyword }}
       </van-tag>
@@ -681,7 +827,7 @@ watch(searchKeyword, () => {
         v-if="filterStatus !== -1" 
         type="success" 
         closeable 
-        @close="() => { filterStatus = -1; fetchTeams() }"
+        @close="() => { filterStatus = -1; fetchTeams({}) }"
       >
         状态: {{ teamStatusMap[filterStatus]?.text }}
       </van-tag>
@@ -689,7 +835,7 @@ watch(searchKeyword, () => {
         v-if="filterMaxNum !== -1" 
         type="warning" 
         closeable 
-        @close="() => { filterMaxNum = -1; fetchTeams() }"
+        @close="() => { filterMaxNum = -1; fetchTeams({}) }"
       >
         人数: {{ filterMaxNum }}人
       </van-tag>
@@ -747,9 +893,10 @@ watch(searchKeyword, () => {
         <van-tab title="所有团队">
           <van-pull-refresh v-model="loading" @refresh="fetchTeams">
             <van-list
-              v-model:loading="loading"
-              :finished="true"
+              v-model:loading="listLoading"
+              :finished="!hasMore"
               finished-text="没有更多了"
+              @load="loadMore"
             >
               <van-cell-group v-for="team in filteredTeams" :key="team.id" class="team-card">
                 <van-cell @click="router.push(`/team/${team.id}`)">
@@ -844,9 +991,10 @@ watch(searchKeyword, () => {
         <van-tab title="我的团队">
           <van-pull-refresh v-model="loading" @refresh="fetchMyTeams">
             <van-list
-              v-model:loading="loading"
-              :finished="true"
+              v-model:loading="listLoading"
+              :finished="!hasMore"
               finished-text="没有更多了"
+              @load="loadMore"
             >
               <van-cell-group v-for="team in myTeams" :key="team.id" class="team-card">
                 <van-cell @click="router.push(`/team/${team.id}`)">
