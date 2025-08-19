@@ -951,21 +951,14 @@ watch(searchKeyword, () => {
                   <template #right-icon>
                     <div class="team-actions">
                       <van-button 
-                        v-if="canJoinTeam(team) && !isTeamExpired(team)" 
+                        v-if="canJoinTeam(team) && !isTeamExpired(team) && !isTeamCreator(team)" 
                         size="small" 
                         type="primary"
                         @click.stop="() => { selectedTeam = team; showJoinDialog = true }"
                       >
                         加入
                       </van-button>
-                      <van-button 
-                        v-if="isTeamCreator(team)" 
-                        size="small" 
-                        type="danger"
-                        @click.stop="dismissTeam(team.id)"
-                      >
-                        解散
-                      </van-button>
+                      <!-- 解散按钮已移除 -->
                       <van-button 
                         v-if="isTeamExpired(team)" 
                         size="small" 
@@ -1052,14 +1045,7 @@ watch(searchKeyword, () => {
                       >
                         退出
                       </van-button>
-                      <van-button 
-                        v-if="isTeamCreator(team)" 
-                        size="small" 
-                        type="danger"
-                        @click.stop="dismissTeam(team.id)"
-                      >
-                        解散
-                      </van-button>
+                      <!-- 解散按钮已移除 -->
                     </div>
                   </template>
                 </van-cell>
