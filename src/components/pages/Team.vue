@@ -490,6 +490,13 @@ const isTeamCreator = (team) => {
   return currentUser && team.userId === currentUser.id
 }
 
+// 检查是否已经加入团队
+const isTeamMember = (team) => {
+  if (!currentUser) return false
+  // 检查是否在我的团队列表中
+  return myTeams.value.some(myTeam => myTeam.id === team.id)
+}
+
 // 检查是否可以加入团队
 const canJoinTeam = (team) => {
   if (!currentUser) return false
@@ -951,7 +958,7 @@ watch(searchKeyword, () => {
                   <template #right-icon>
                     <div class="team-actions">
                       <van-button 
-                        v-if="canJoinTeam(team) && !isTeamExpired(team) && !isTeamCreator(team)" 
+                        v-if="canJoinTeam(team) && !isTeamExpired(team) && !isTeamCreator(team) && !isTeamMember(team)" 
                         size="small" 
                         type="primary"
                         @click.stop="() => { selectedTeam = team; showJoinDialog = true }"
