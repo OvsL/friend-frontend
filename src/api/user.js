@@ -66,6 +66,13 @@ export const userApi = {
         return myAxios.post('/user/logout');
     },
     
+    // 匹配用户
+    matchUsers: (pageSize = 10) => {
+        return myAxios.get('/user/match', {
+            params: { pageSize }
+        });
+    },
+    
     // 获取当前用户信息
     getCurrentUser: () => {
         return myAxios.get('/user/current');

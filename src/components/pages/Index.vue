@@ -129,10 +129,7 @@ const goToSearch = () => {
   router.push('/searchTag')
 }
 
-// 跳转到标签搜索页面
-const goToSearchTag = () => {
-  router.push('/searchTag')
-}
+// 标签搜索入口已移除
 
 // 跳转到团队页面
 const goToTeam = () => {
@@ -187,13 +184,7 @@ const viewUserDetail = (userId) => {
           @click="goToSearch"
           class="nav-cell"
         />
-        <van-cell
-          title="标签搜索"
-          icon="tag-o"
-          is-link
-          @click="goToSearchTag"
-          class="nav-cell"
-        />
+        <!-- 标签搜索入口已移除 -->
         <van-cell
           title="我的团队"
           icon="friends-o"
@@ -202,10 +193,17 @@ const viewUserDetail = (userId) => {
           class="nav-cell"
         />
         <van-cell
+          title="为你匹配"
+          icon="user-o"
+          is-link
+          @click="router.push('/match?openPicker=1')"
+          class="nav-cell"
+        />
+        <van-cell
+          v-if="false"
           title="团队功能测试"
           icon="setting-o"
           is-link
-          @click="router.push('/test-team')"
           class="nav-cell"
         />
       </van-cell-group>

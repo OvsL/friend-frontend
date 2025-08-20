@@ -1,7 +1,6 @@
 import Index from '../components/pages/Index.vue'
 import Team from '../components/pages/Team.vue';
 import TeamDetail from '../components/pages/TeamDetail.vue';
-import TestTeam from '../components/pages/TestTeam.vue';
 import User from '../components/pages/User.vue';
 import SearchTag from '../components/pages/SearchTag.vue';
 import UserEditPage from '../components/pages/UserEditPage.vue';
@@ -9,6 +8,7 @@ import SearchResult from '../components/pages/SearchResult.vue'
 import Login from '../components/pages/Login.vue'
 import Register from '../components/pages/Register.vue'
 import TestAuth from '../components/pages/TestAuth.vue'
+import Match from '../components/pages/Match.vue'
 
 // 路由配置
 const routes = [
@@ -19,7 +19,6 @@ const routes = [
     { path: '/test-auth', component: TestAuth },
     { path: '/team', component: Team },
     { path: '/team/:id', component: TeamDetail },
-    { path: '/test-team', component: TestTeam },
     { path: '/user', component: User },
     { path: '/searchTag', component: SearchTag },
     { path: '/user/edit', component: UserEditPage },
@@ -28,6 +27,7 @@ const routes = [
       name: 'SearchResult',
       component: SearchResult
     },
+    { path: '/match', component: Match },
 ]
 
 export default routes;

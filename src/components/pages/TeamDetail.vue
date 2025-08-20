@@ -8,6 +8,7 @@ import userStore from '../../utils/userStore.js'
 // 路由实例
 const router = useRouter()
 const route = useRoute()
+const goBack = () => router.back()
 
 // 当前用户信息
 const currentUser = userStore.getUser()
@@ -19,6 +20,7 @@ const showJoinDialog = ref(false)
 const showExitDialog = ref(false)
 const showEditDialog = ref(false)
 const showStatusPicker = ref(false)
+const myTeams = ref([])
 
 // 加入团队表单
 const joinForm = ref({
@@ -80,6 +82,23 @@ const fetchTeamDetail = async () => {
     router.back()
   } finally {
     loading.value = false
+  }
+}
+
+// 获取我的团队列表
+const fetchMyTeams = async () => {
+  try {
+    const resp = await teamApi.listMyTeams()
+    if (resp?.data?.code === 0) {
+      myTeams.value = resp.data.data || []
+    } else if (Array.isArray(resp?.data)) {
+      myTeams.value = resp.data
+    } else {
+      myTeams.value = []
+    }
+  } catch (e) {
+    console.error('获取我的团队失败:', e)
+    myTeams.value = []
   }
 }
 
@@ -160,13 +179,7 @@ const dismissTeam = async () => {
 const openEditDialog = () => {
   if (!team.value) return
   
-  // 调试信息
-  console.log('团队数据:', team.value)
-  console.log('团队名称字段:', {
-    teamName: team.value.teamName,
-    name: team.value.name
-  })
-  console.log('最终使用的团队名称:', team.value.teamName || team.value.name || '无名称')
+  //
   
   editForm.value = {
     teamName: team.value.teamName || team.value.name || '',
@@ -177,14 +190,7 @@ const openEditDialog = () => {
     password: team.value.password || ''
   }
   
-  console.log('编辑表单数据:', editForm.value)
-  console.log('状态字段详情:', {
-    teamStatus: team.value.status,
-    teamStatusType: typeof team.value.status,
-    editFormStatus: editForm.value.status,
-    editFormStatusType: typeof editForm.value.status,
-    mappedText: teamStatusMap[editForm.value.status]?.text
-  })
+  //
   showEditDialog.value = true
 }
 
@@ -256,9 +262,17 @@ const isTeamCreator = () => {
   return currentUser && team.value && team.value.userId === currentUser.id
 }
 
+// 是否已加入该团队
+const isTeamMember = () => {
+  if (!team.value) return false
+  return myTeams.value.some(t => t.id === team.value.id)
+}
+
 // 检查是否可以加入团队
 const canJoinTeam = () => {
   if (!currentUser || !team.value) return false
+  if (isTeamCreator()) return false
+  if (isTeamMember()) return false
   if (team.value.status === 1) return false // 私有团队
   if (team.value.hasJoinNum >= team.value.maxNum) return false // 人数已满
   return true
@@ -324,8 +338,8 @@ const debugEditForm = () => {
 }
 
 // 页面初始化
-onMounted(() => {
-  fetchTeamDetail()
+onMounted(async () => {
+  await Promise.all([fetchMyTeams(), fetchTeamDetail()])
 })
 </script>
 
@@ -334,8 +348,9 @@ onMounted(() => {
     <!-- 页面头部 -->
     <van-nav-bar
       title="团队详情"
+      left-text="返回"
       left-arrow
-      @click-left="router.back()"
+      @click-left="goBack"
     />
 
     <!-- 加载状态 -->
@@ -402,15 +417,7 @@ onMounted(() => {
           编辑团队
         </van-button>
         
-        <van-button 
-          v-if="isTeamCreator()" 
-          type="default" 
-          size="small"
-          @click="debugEditForm"
-          style="margin-top: 8px;"
-        >
-          调试编辑表单
-        </van-button>
+        
         
         <van-button 
           v-if="isTeamCreator()" 
@@ -519,12 +526,7 @@ onMounted(() => {
           is-link
           @click="showStatusPicker = true"
         />
-        <!-- 调试信息 -->
-        <div style="font-size: 12px; color: #999; padding: 0 16px; margin-bottom: 8px;">
-          调试: editForm.status = {{ editForm.status }}, 显示值 = {{ teamStatusMap[editForm.status]?.text || `状态:${editForm.status}` }}
-          <br>
-          状态类型: {{ typeof editForm.status }}, 状态映射: {{ JSON.stringify(teamStatusMap[editForm.status]) }}
-        </div>
+        
         
         <van-field
           v-if="editForm.status === 2"

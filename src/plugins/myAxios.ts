@@ -4,7 +4,7 @@ import { clearUserInfo } from '../utils/auth.js';
 // 创建实例时配置默认值
 const instance = axios.create({
     baseURL: 'http://localhost:8080/api', // 修正为http协议
-    timeout: 10000,
+    timeout: 100000,
     withCredentials: true // 允许跨域请求携带cookie
 });
 

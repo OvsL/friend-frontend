@@ -698,77 +698,7 @@ const onMaxNumPickerConfirm = (value) => {
   }
 }
 
-// 测试筛选功能
-const testFilters = () => {
-  console.log('=== 筛选功能测试 ===')
-  console.log('当前筛选条件:', {
-    searchKeyword: searchKeyword.value,
-    filterStatus: filterStatus.value,
-    filterMaxNum: filterMaxNum.value
-  })
-  console.log('团队数据:', teams.value)
-  console.log('筛选结果:', filteredTeams.value)
-  
-  // 测试当前筛选条件
-  const currentFilters = {
-    searchText: searchKeyword.value.trim() || undefined,
-    status: filterStatus.value !== -1 ? filterStatus.value : undefined,
-    maxNum: filterMaxNum.value !== -1 ? filterMaxNum.value : undefined
-  }
-  
-  console.log('当前筛选参数:', currentFilters)
-  console.log('团队总数:', teams.value.length)
-}
-
-// 调试临时筛选变量
-const debugTempFilters = () => {
-  console.log('=== 临时筛选变量调试 ===')
-  console.log('实际筛选条件:', {
-    filterStatus: filterStatus.value,
-    filterMaxNum: filterMaxNum.value
-  })
-  console.log('临时筛选条件:', {
-    tempFilterStatus: tempFilterStatus.value,
-    tempFilterMaxNum: tempFilterMaxNum.value
-  })
-  console.log('筛选对话框状态:', showFilterDialog.value)
-  console.log('状态选择器状态:', showStatusFilterPicker.value)
-  console.log('人数选择器状态:', showMaxNumFilterPicker.value)
-  
-  // 调试筛选后的团队数据
-  if (teams.value.length > 0) {
-    console.log('筛选后的第一个团队数据:', teams.value[0])
-    console.log('团队状态字段详情:', {
-      status: teams.value[0].status,
-      statusType: typeof teams.value[0].status,
-      maxNum: teams.value[0].maxNum,
-      maxNumType: typeof teams.value[0].maxNum,
-      hasJoinNum: teams.value[0].hasJoinNum,
-      hasJoinNumType: typeof teams.value[0].hasJoinNum
-    })
-  }
-  
-  // 调试筛选对话框字段显示
-  console.log('筛选对话框字段显示详情:', {
-    tempFilterStatus: tempFilterStatus.value,
-    tempFilterStatusType: typeof tempFilterStatus.value,
-    statusMappedText: teamStatusMap[tempFilterStatus.value]?.text,
-    statusDisplayValue: tempFilterStatus.value === -1 ? '全部状态' : teamStatusMap[tempFilterStatus.value]?.text,
-    
-    tempFilterMaxNum: tempFilterMaxNum.value,
-    tempFilterMaxNumType: typeof tempFilterMaxNum.value,
-    maxNumDisplayValue: tempFilterMaxNum.value === -1 ? '全部人数' : `${tempFilterMaxNum.value}人`
-  })
-  
-  // 调试分页状态
-  console.log('分页状态:', {
-    currentPage: currentPage.value,
-    pageSize: pageSize.value,
-    hasMore: hasMore.value,
-    totalTeams: teams.value.length,
-    listLoading: listLoading.value
-  })
-}
+// 调试相关按钮与方法已移除
 
 // 监听搜索关键词变化
 watch(searchKeyword, () => {
@@ -781,8 +711,6 @@ watch(searchKeyword, () => {
     <!-- 页面头部 -->
     <van-nav-bar
       title="团队管理"
-      left-arrow
-      @click-left="router.back()"
     >
       <template #right>
         <van-icon 
@@ -795,18 +723,7 @@ watch(searchKeyword, () => {
           @click="openFilterDialog"
           style="margin-left: 16px;"
         />
-        <van-icon 
-          name="setting-o" 
-          @click="testFilters"
-          style="margin-left: 16px;"
-          title="测试筛选"
-        />
-        <van-icon 
-          name="info-o" 
-          @click="debugTempFilters"
-          style="margin-left: 16px;"
-          title="调试临时筛选"
-        />
+        
       </template>
     </van-nav-bar>
 

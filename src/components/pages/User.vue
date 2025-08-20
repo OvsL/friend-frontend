@@ -51,9 +51,7 @@
       <van-button type="default" block @click="changePassword">
         修改密码
       </van-button>
-      <van-button type="default" block @click="debugAuth">
-        调试登录状态
-      </van-button>
+      
       <van-button type="danger" block @click="logout">
         退出登录
       </van-button>
@@ -66,7 +64,6 @@ import { ref, reactive, onMounted, computed, onUnmounted } from 'vue'
 import { showToast, showConfirmDialog } from 'vant'
 import { getCurrentUser, logout as logoutUser, checkAuth } from '../../utils/auth.js'
 import userStore from '../../utils/userStore.js'
-import { debugLoginStatus } from '../../utils/debug.js'
 import { DEFAULT_AVATAR_URL, GENDER_TEXT_MAP } from '../../utils/constants.js'
 
 // 用户信息
@@ -155,11 +152,7 @@ const refreshUserInfo = async () => {
   }
 }
 
-// 调试登录状态
-const debugAuth = () => {
-  debugLoginStatus()
-  showToast('请查看控制台调试信息')
-}
+// 调试按钮已移除
 
 // 修改密码
 const changePassword = () => {
